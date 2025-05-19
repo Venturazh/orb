@@ -1,0 +1,547 @@
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Loading Screen GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LoadingScreen"
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Blur Effect
+local blur = Instance.new("BlurEffect")
+blur.Size = 24
+blur.Parent = game:GetService("Lighting")
+
+-- Transparent base container
+local container = Instance.new("Frame")
+container.BackgroundTransparency = 1
+container.Size = UDim2.new(1, 0, 1, 0)
+container.Parent = screenGui
+
+-- Floating Circles
+for i = 1, 10 do
+	local circle = Instance.new("Frame")
+	circle.Size = UDim2.new(0, 20, 0, 20)
+	circle.BackgroundColor3 = Color3.new(1, 1, 1)
+	circle.BackgroundTransparency = 0.2
+	circle.Position = UDim2.new(math.random(), 0, math.random(), 0)
+	circle.AnchorPoint = Vector2.new(0.5, 0.5)
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = circle
+
+	circle.Parent = container
+
+	task.spawn(function()
+		while screenGui.Parent do
+			circle.Position = UDim2.new(math.random(), 0, math.random(), 0)
+			circle:TweenPosition(circle.Position, Enum.EasingDirection.InOut, Enum.EasingStyle.Quad, 2, true)
+			task.wait(math.random(1, 2))
+		end
+	end)
+end
+
+-- Main Text
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 100)
+title.Position = UDim2.new(0.5, 0, 0.4, 0)
+title.AnchorPoint = Vector2.new(0.5, 0.5)
+title.Text = "Thanks for using Admin Orb"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextScaled = true
+title.BackgroundTransparency = 1
+title.Parent = container
+
+-- Subtitle
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, 0, 0, 40)
+subtitle.Position = UDim2.new(0.5, 0, 0.48, 0)
+subtitle.AnchorPoint = Vector2.new(0.5, 0.5)
+subtitle.Text = "Made by Venturazh"
+subtitle.TextColor3 = Color3.new(1, 1, 1)
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextScaled = true
+subtitle.BackgroundTransparency = 1
+subtitle.Parent = container
+
+-- Remove after 3 seconds
+task.delay(3, function()
+	screenGui:Destroy()
+	blur:Destroy()
+end)
+
+task.wait(3)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+local orb = Instance.new("Part")
+orb.Shape = Enum.PartType.Ball
+orb.Size = Vector3.new(1, 1, 1)
+orb.Material = Enum.Material.Neon
+orb.BrickColor = BrickColor.new("Really black")
+orb.Anchored = true
+orb.CanCollide = false
+orb.Parent = workspace
+
+
+-- Add gray particle emitter
+local particleEmitter = Instance.new("ParticleEmitter")
+particleEmitter.Color = ColorSequence.new(Color3.new(0.5, 0.5, 0.5))
+particleEmitter.LightEmission = 0.3
+particleEmitter.Size = NumberSequence.new(0.1)
+particleEmitter.Rate = 10
+particleEmitter.Speed = NumberRange.new(0.5, 1)
+particleEmitter.Lifetime = NumberRange.new(1, 1.5)
+particleEmitter.Rotation = NumberRange.new(0, 360)
+particleEmitter.RotSpeed = NumberRange.new(-90, 90)
+particleEmitter.EmissionDirection = Enum.NormalId.Top
+particleEmitter.Enabled = true
+particleEmitter.Parent = orb
+
+local billboardGui = Instance.new("BillboardGui")
+billboardGui.Size = UDim2.new(0, 200, 0, 50)
+billboardGui.Adornee = orb
+billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+billboardGui.AlwaysOnTop = true
+billboardGui.Parent = orb
+billboardGui.Enabled = false
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(1, 0, 1, 0)
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "Hello, Master"
+textLabel.TextColor3 = Color3.new(1, 1, 1)
+textLabel.TextStrokeColor3 = Color3.fromRGB(170, 0, 255)
+textLabel.TextStrokeTransparency = 0.4
+textLabel.TextScaled = true
+textLabel.Font = Enum.Font.GothamBlack
+textLabel.Parent = billboardGui
+
+local function orbSay(text)
+    billboardGui.Enabled = true
+    textLabel.Text = text
+    task.delay(2.5, function()
+        billboardGui.Enabled = false
+    end)
+end
+
+-- Add this just after orbSay:
+local function orbSayMultipleLock(lines, delay)
+    local originalOrbitSpeed = orbitSpeed
+    local originalOrbitAngle = orbitAngle
+    orbitSpeed = 0 -- stop spinning
+
+    -- Lock orb position 3 studs in front of player
+    local lockPos = hrp.CFrame * CFrame.new(0, 0, -3)
+    orb.Position = lockPos.Position
+
+    billboardGui.Enabled = true
+    for _, line in ipairs(lines) do
+        textLabel.Text = line
+        task.wait(delay or 2.5)
+    end
+    billboardGui.Enabled = false
+
+    -- Restore orbit speed and angle
+    orbitSpeed = originalOrbitSpeed
+    orbitAngle = originalOrbitAngle
+end
+
+local greeted = false
+local orbitRadius = 3
+local orbitSpeed = 2
+local followOffset = Vector3.new(3, 1.5, 0)
+local lastPosition = hrp.Position
+local orbitAngle = 0
+local spectating = false
+local spectateTarget = nil
+local currentCamera = workspace.CurrentCamera
+local originalCameraSubject = currentCamera.CameraSubject
+
+local function updateCharacter(newChar)
+    character = newChar
+    hrp = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+    lastPosition = hrp.Position
+end
+
+player.CharacterAdded:Connect(updateCharacter)
+
+RunService.RenderStepped:Connect(function(dt)
+    if not greeted then
+        greeted = true
+        orbSay("Hello, Master")
+    end
+
+    if spectating and spectateTarget and spectateTarget.Character and spectateTarget.Character:FindFirstChild("Head") then
+        local head = spectateTarget.Character.Head
+        local offset = head.CFrame.LookVector * 3
+        orb.Position = head.Position + offset + Vector3.new(0, 1, 0)
+        return
+    end
+
+    local currentPosition = hrp.Position
+    local isMoving = (currentPosition - lastPosition).Magnitude > 0.05
+    lastPosition = currentPosition
+
+    if not flying then
+        if isMoving then
+            local rightVector = hrp.CFrame.RightVector
+            local followPosition = hrp.Position + rightVector * followOffset.X + Vector3.new(0, followOffset.Y, 0)
+            orb.Position = orb.Position:Lerp(followPosition, 0.25)
+        else
+            orbitAngle += dt * orbitSpeed
+            local offset = Vector3.new(
+                math.cos(orbitAngle) * orbitRadius,
+                1.5,
+                math.sin(orbitAngle) * orbitRadius
+            )
+            orb.Position = orb.Position:Lerp(hrp.Position + offset, 0.25)
+        end
+    end
+end)
+
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CommandGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local textBox = Instance.new("TextBox")
+textBox.Size = UDim2.new(0, 400, 0, 50)
+textBox.Position = UDim2.new(0.5, 0, 0.5, 0)
+textBox.AnchorPoint = Vector2.new(0.5, 0.5)
+textBox.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+textBox.BorderSizePixel = 0
+textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+textBox.TextStrokeColor3 = Color3.fromRGB(170, 0, 255)
+textBox.TextStrokeTransparency = 0.4
+textBox.TextSize = 24
+textBox.Font = Enum.Font.FredokaOne
+textBox.PlaceholderText = ""
+textBox.ClearTextOnFocus = true
+textBox.Visible = false
+textBox.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = textBox
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(0, 170, 255)
+stroke.Thickness = 2
+stroke.Transparency = 0.2
+stroke.Parent = textBox
+
+local baseplates = nil
+
+local function createBaseplates()
+    baseplates = {}
+    for X = -10000, 10000, 512 do
+        for Z = -10000, 10000, 512 do
+            local P = Instance.new("Part")
+            P.Anchored = true
+            P.Locked = true
+            P.Size = Vector3.new(512, 1, 512)
+            P.CFrame = CFrame.new(X, -0.5, Z)
+            P.Color = Color3.fromRGB(50, 50, 50)
+            P.Material = Enum.Material.Asphalt
+            P.Transparency = 1
+            P.CanCollide = false
+            P.Parent = workspace
+            table.insert(baseplates, P)
+        end
+    end
+end
+
+local function toggleBaseplates()
+    if not baseplates then
+        createBaseplates()
+    end
+    for _, part in pairs(baseplates) do
+        if part.Transparency == 0 then
+            part.Transparency = 1
+            part.CanCollide = false
+        else
+            part.Transparency = 0
+            part.CanCollide = true
+        end
+    end
+end
+
+local function findPlayerByPartialName(namePartial)
+    local namePartialLower = namePartial:lower()
+    local exactMatch = nil
+    for _, plr in pairs(Players:GetPlayers()) do
+        local plrName = plr.Name:lower()
+        local plrDisplayName = plr.DisplayName:lower()
+        if plrName == namePartialLower or plrDisplayName == namePartialLower then
+            return plr
+        elseif plrName:find(namePartialLower) or plrDisplayName:find(namePartialLower) then
+            exactMatch = exactMatch or plr
+        end
+    end
+    return exactMatch
+end
+
+-- Flight control variables
+local flying = false
+local flightInput = {forward=false, backward=false, left=false, right=false, up=false, down=false}
+local flightSpeed = 90
+local bodyVelocity = nil
+local bodyGyro = nil
+local weld = nil
+
+local function enableFlight()
+    if flying then return end
+    flying = true
+    humanoid.PlatformStand = true
+
+    -- Weld character to orb so it looks like sitting on it
+    if weld then weld:Destroy() end
+    weld = Instance.new("WeldConstraint")
+    weld.Part0 = hrp
+    weld.Part1 = orb
+    weld.Parent = orb
+
+    -- Create BodyVelocity for movement
+    if not bodyVelocity or not bodyVelocity.Parent then
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
+        bodyVelocity.Velocity = Vector3.new(0,0,0)
+        bodyVelocity.Parent = orb
+    end
+
+    -- Create BodyGyro to keep orb orientation stable
+    if not bodyGyro or not bodyGyro.Parent then
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(1e5,1e5,1e5)
+        bodyGyro.CFrame = orb.CFrame
+        bodyGyro.Parent = orb
+    end
+
+    orb.Anchored = false
+end
+
+local function disableFlight()
+    if not flying then return end
+    flying = false
+    humanoid.PlatformStand = false
+
+    if weld then
+        weld:Destroy()
+        weld = nil
+    end
+
+    if bodyVelocity then
+        bodyVelocity:Destroy()
+        bodyVelocity = nil
+    end
+
+    if bodyGyro then
+        bodyGyro:Destroy()
+        bodyGyro = nil
+    end
+
+    orb.Anchored = true
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    if flying and bodyVelocity and bodyGyro then
+        local moveVec = Vector3.new(0,0,0)
+        local camCF = workspace.CurrentCamera.CFrame
+        if flightInput.forward then
+            moveVec += camCF.LookVector
+        end
+        if flightInput.backward then
+            moveVec -= camCF.LookVector
+        end
+        if flightInput.left then
+            moveVec -= camCF.RightVector
+        end
+        if flightInput.right then
+            moveVec += camCF.RightVector
+        end
+        if flightInput.up then
+            moveVec += Vector3.new(0,1,0)
+        end
+        if flightInput.down then
+            moveVec -= Vector3.new(0,1,0)
+        end
+
+        if moveVec.Magnitude > 0 then
+            moveVec = moveVec.Unit * flightSpeed
+        end
+        bodyVelocity.Velocity = moveVec
+        bodyGyro.CFrame = CFrame.new(orb.Position, orb.Position + camCF.LookVector)
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == Enum.KeyCode.Semicolon then
+            textBox.Visible = true
+            textBox.Text = "" -- Clear any `;` that may sneak in
+            task.wait() -- Tiny wait to avoid capturing the semicolon
+            textBox:CaptureFocus()
+            -- You cannot return a value in this event, so just return here to stop further processing
+            return
+        end
+
+
+        if flying then
+            if input.KeyCode == Enum.KeyCode.W then flightInput.forward = true end
+            if input.KeyCode == Enum.KeyCode.S then flightInput.backward = true end
+            if input.KeyCode == Enum.KeyCode.A then flightInput.left = true end
+            if input.KeyCode == Enum.KeyCode.D then flightInput.right = true end
+            if input.KeyCode == Enum.KeyCode.Space then flightInput.up = true end
+            if input.KeyCode == Enum.KeyCode.LeftControl then flightInput.down = true end
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if flying then
+            if input.KeyCode == Enum.KeyCode.W then flightInput.forward = false end
+            if input.KeyCode == Enum.KeyCode.S then flightInput.backward = false end
+            if input.KeyCode == Enum.KeyCode.A then flightInput.left = false end
+            if input.KeyCode == Enum.KeyCode.D then flightInput.right = false end
+            if input.KeyCode == Enum.KeyCode.Space then flightInput.up = false end
+            if input.KeyCode == Enum.KeyCode.LeftControl then flightInput.down = false end
+        end
+    end
+end)
+
+local bangLoop = false
+local bangTarget = nil
+local bangSound = Instance.new("Sound")
+bangSound.SoundId = "rbxassetid://1843529365" -- clapping sound
+bangSound.Volume = 1
+bangSound.Parent = orb
+
+local function startBang(target)
+    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then
+        orbSay("Target not found")
+        return
+    end
+    bangTarget = target
+    bangLoop = true
+    orbSay("Banging " .. target.Name)
+
+    spawn(function()
+        while bangLoop and bangTarget and bangTarget.Character and bangTarget.Character:FindFirstChild("HumanoidRootPart") do
+            local targetPos = bangTarget.Character.HumanoidRootPart.Position
+            hrp.CFrame = CFrame.new(targetPos + Vector3.new(1,0,0))
+            wait(0.1)
+            hrp.CFrame = CFrame.new(targetPos + Vector3.new(-1,0,0))
+            wait(0.1)
+            bangSound:Play()
+            wait(0.5)
+        end
+    end)
+end
+
+local function stopBang()
+    bangLoop = false
+    bangTarget = nil
+end
+
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local cmd = textBox.Text:lower()
+        textBox.Visible = false
+        textBox.Text = ""
+
+        if cmd == "spectate" then
+            spectating = true
+            orbSay("Spectate mode enabled")
+        elseif cmd == "unspectate" then
+            spectating = false
+            orbSay("Spectate mode disabled")
+        elseif cmd:sub(1,5) == "goto " then
+            local name = cmd:sub(6)
+            local target = findPlayerByPartialName(name)
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
+                orbSay("Teleported to "..target.Name)
+            else
+                orbSay("Player not found")
+            end
+        elseif cmd == "bigbase" then
+            toggleBaseplates()
+            orbSay("Big base toggled")
+        elseif cmd:sub(1,5) == "bang " then
+            local name = cmd:sub(6)
+            local target = findPlayerByPartialName(name)
+            if target then
+                startBang(target)
+            else
+                orbSay("Player not found")
+            end
+        elseif cmd == "unbang" then
+            stopBang()
+            orbSay("Stopped banging")
+			
+	elseif cmd == "help" then
+            local helpLines = {
+                "Commands:",
+                "spectate - spectate a player",
+                "unspectate - Disable spectate mode",
+                "goto <player> - Teleport to player",
+                "bigbase - Toggle big baseplates",
+                "bang <player> - Bang player with sound",
+                "unbang - Stop banging",
+                "ride - Fly on orb",
+                "unride - Stop flying",
+                "vcunsus - Join voice chat",
+				"walkspeed <number> - Set your WalkSpeed",
+                "help - Show this message"
+            }
+            orbSayMultipleLock(helpLines, 2)
+
+elseif cmd:match("^walkspeed%s+%d+$") then
+    local speed = tonumber(cmd:match("%d+"))
+    if speed then
+        character.Humanoid.WalkSpeed = speed
+        orbSay("WalkSpeed set to " .. speed)
+    else
+        orbSay("Invalid speed.")
+    end
+
+elseif cmd == "vcunsus" then
+    pcall(function()
+        game:GetService("VoiceChatService"):joinVoice()
+    end)
+    orbSay("Attempted voice join")
+
+        elseif cmd == "ride" then
+            enableFlight()
+            orbSay("Riding orb")
+        elseif cmd == "unride" then
+            disableFlight()
+            orbSay("Unridden orb")
+        else
+            orbSay("Unknown command")
+        end
+    else
+        textBox.Visible = false
+        textBox.Text = ""
+    end
+end)
+
+
+
