@@ -135,6 +135,24 @@ local function orbSay(text)
     end)
 end
 
+local noclipEnabled = false
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+RunService.Stepped:Connect(function()
+    if noclipEnabled and player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide == true then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+local spinning = false
+
+
 local clickTpEnabled = false
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -480,18 +498,29 @@ textBox.FocusLost:Connect(function(enterPressed)
         textBox.Visible = false
         textBox.Text = ""
 
-        if cmd == "spectate" then
-            spectating = true
-            orbSay("Spectate mode enabled")
+    if cmd:sub(1,9) == "spectate " then
+    local name = cmd:sub(10)
+    local target = findPlayerByPartialName(name)
+    if target and target.Character and target.Character:FindFirstChild("Humanoid") then
+        spectateTarget = target
+        currentCamera.CameraSubject = target.Character:FindFirstChild("Humanoid")
+        spectating = true
+        orbSay("Now spectating " .. target.Name)
+    else
+        orbSay("Player not found")
+    end
 
 elseif cmd == "clicktp" then
     clickTpEnabled = not clickTpEnabled
     orbSay("Click TP " .. (clickTpEnabled and "Enabled" or "Disabled"))
 
 
-        elseif cmd == "unspectate" then
-            spectating = false
-            orbSay("Spectate mode disabled")
+ elseif cmd == "unspectate" then
+    spectateTarget = nil
+    spectating = false
+    currentCamera.CameraSubject = player.Character and player.Character:FindFirstChild("Humanoid") or player
+    orbSay("Stopped spectating")
+
         elseif cmd:sub(1,5) == "goto " then
             local name = cmd:sub(6)
             local target = findPlayerByPartialName(name)
@@ -504,7 +533,7 @@ elseif cmd == "clicktp" then
         elseif cmd == "bigbase" then
             toggleBaseplates()
             orbSay("Big base toggled")
-        elseif cmd:sub(1,5) == "bang " then
+        elseif cmd:sub(1,5) == "bang" then
             local name = cmd:sub(6)
             local target = findPlayerByPartialName(name)
             if target then
@@ -515,6 +544,23 @@ elseif cmd == "clicktp" then
         elseif cmd == "unbang" then
             stopBang()
             orbSay("Stopped banging")
+
+			elseif cmd == "noclip" then
+    noclipEnabled = not noclipEnabled
+    orbSay("Noclip " .. (noclipEnabled and "Enabled" or "Disabled"))
+
+elseif cmd == "unnoclip" then
+    noclipEnabled = false
+    if player.Character then
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+    orbSay("Noclip Disabled")
+
+
 
 			        elseif cmd == "refresh" then
             local savedPosition = hrp.Position
@@ -546,14 +592,16 @@ elseif cmd == "clicktp" then
                 "unspectate - Disable spectate mode",
                 "goto <player> - Teleport to player",
                 "bigbase - Toggle big baseplates",
-                "bang <player> - Bang player with sound",
-                "unbang - Stop banging",
+                "focus <player> - loop tps to them",
+                "unfocus - Stops loop tping",
                 "ride - Fly on orb",
                 "unride - Stop flying",
                 "vcunsus - Join voice chat",
 				"walkspeed <number> - Set your WalkSpeed",
 				"refresh - Resets you",
 				"clicktp - does what it sounds like",
+				"noclip - can walk through walls",
+				"unnoclip - disables noclip",
                 "help - Show this message"
             }
             orbSayMultipleLock(helpLines, 2)
@@ -566,6 +614,22 @@ elseif cmd:match("^walkspeed%s+%d+$") then
     else
         orbSay("Invalid speed.")
     end
+
+elseif cmd == "spin" then
+    spinning = true
+    task.spawn(function()
+        while spinning and player.Character and player.Character:FindFirstChild("HumanoidRootPart") do
+            local hrp = player.Character.HumanoidRootPart
+            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(10), 0)
+            task.wait()
+        end
+    end)
+    orbSay("Spinning...")
+
+elseif cmd == "unspin" then
+    spinning = false
+    orbSay("Stopped spinning.")
+
 
 elseif cmd == "vcunsus" then
     pcall(function()
