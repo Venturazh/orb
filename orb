@@ -135,6 +135,20 @@ local function orbSay(text)
     end)
 end
 
+local clickTpEnabled = false
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+mouse.Button1Down:Connect(function()
+    if clickTpEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        local targetPos = mouse.Hit.Position
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(targetPos + Vector3.new(0, 3, 0)) -- slight lift
+    end
+end)
+
+
 -- Add this just after orbSay:
 local function orbSayMultipleLock(lines, delay)
     local originalOrbitSpeed = orbitSpeed
@@ -469,6 +483,12 @@ textBox.FocusLost:Connect(function(enterPressed)
         if cmd == "spectate" then
             spectating = true
             orbSay("Spectate mode enabled")
+
+elseif cmd == "clicktp" then
+    clickTpEnabled = not clickTpEnabled
+    orbSay("Click TP " .. (clickTpEnabled and "Enabled" or "Disabled"))
+
+
         elseif cmd == "unspectate" then
             spectating = false
             orbSay("Spectate mode disabled")
@@ -495,6 +515,29 @@ textBox.FocusLost:Connect(function(enterPressed)
         elseif cmd == "unbang" then
             stopBang()
             orbSay("Stopped banging")
+
+			        elseif cmd == "refresh" then
+            local savedPosition = hrp.Position
+            orbSay("Refreshing...")
+
+            -- Store character reset signal
+            local function onRespawn(newChar)
+                character = newChar
+                hrp = character:WaitForChild("HumanoidRootPart")
+                humanoid = character:WaitForChild("Humanoid")
+                hrp.CFrame = CFrame.new(savedPosition)
+                orbSay("Refreshed")
+            end
+
+            -- Connect the respawn handler
+            local conn
+            conn = player.CharacterAdded:Connect(function(char)
+                conn:Disconnect()
+                onRespawn(char)
+            end)
+
+            humanoid:TakeDamage(1000)
+
 			
 	elseif cmd == "help" then
             local helpLines = {
@@ -509,6 +552,8 @@ textBox.FocusLost:Connect(function(enterPressed)
                 "unride - Stop flying",
                 "vcunsus - Join voice chat",
 				"walkspeed <number> - Set your WalkSpeed",
+				"refresh - Resets you",
+				"clicktp - does what it sounds like",
                 "help - Show this message"
             }
             orbSayMultipleLock(helpLines, 2)
